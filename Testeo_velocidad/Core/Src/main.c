@@ -91,15 +91,17 @@ uint16_t ModbusDATA[13]={1,0,0,0,0,0,0,0,0,0,0,0,0}; // Mapa modbus!
 
 float velocidad = 0;
 float velocidad_prima1,velocidad_prima2;
+
 uint32_t ticksPrev = 0;
 uint32_t ticksNow = 0;
-uint32_t overflow = 0; // Cantidad de desbordes del timer
-uint64_t deltaTicks = 0;
+uint32_t ticksAux = 0;
+uint32_t deltaTicks = 0;
+uint64_t tickFilter = 500; // Parametro delicado, puede hacer cagadas en la medicion de la velocidad, OJO
+
+uint16_t overflow = 0; // Cantidad de desbordes del timer
 uint32_t ranuras = 50;
 uint32_t cantTicksTmr2 = 50000;
 uint64_t fsTmr2= 50000;
-uint64_t tickFilter = 500; // Parametro delicado, puede hacer cagadas en la medicion de la velocidad, OJO
-uint32_t ticksAux = 0;
 
 char *prt;
 
@@ -107,56 +109,55 @@ char *prt;
 
 
 void Variar_CCR(){
-
 	htim1.Instance->CCR1 += 200;
 	ModbusDATA[1]+=200;
 	if(htim1.Instance->CCR1==10000){
 		htim1.Instance->CCR1 = 0;
 		ModbusDATA[1]=0;
 	}
-
 }
 void HAL_GPIO_EXTI_Callback (uint16_t GPIO_Pin){
 	if (GPIO_Pin == D01_Encoder_Pin){
-
 		ticksAux = ticksPrev;
 		ticksPrev = ticksNow;
 		ticksNow = __HAL_TIM_GetCounter(&htim2);
 
+
+
 		if (overflow == 0){
-			// Todo cool, calculo normal
-			deltaTicks = (uint64_t)(ticksNow - ticksPrev);
-			if (deltaTicks > tickFilter){
-				velocidad = ((1/(float)ranuras)/((float)deltaTicks/(float)fsTmr2));
+					// Todo cool, calculo normal
+					deltaTicks = ticksNow - ticksPrev;
+					if (deltaTicks > tickFilter){
+						velocidad = ((1/(float)ranuras)/((float)deltaTicks/(float)fsTmr2));
 
-				//Filtro IIR
-				velocidad_prima2 = velocidad_prima1;
-				velocidad_prima1 = 0.95*velocidad_prima2 + 0.05*velocidad;
-				HAL_GPIO_TogglePin(Led_GPIO_Port, Led_Pin);
-			}
-			else{
-				ticksNow = ticksPrev;
-				ticksPrev = ticksAux;
-			}
-		} else{
-			// Tuve algun desborde y tengo que tenerlo en cuenta
-			deltaTicks = (uint64_t)(ticksNow + overflow * cantTicksTmr2)- ticksPrev;
-			if (deltaTicks > tickFilter){
-				velocidad = ((1/(float)ranuras)/((float)deltaTicks/(float)fsTmr2));
+						//Filtro IIR
+						velocidad_prima2 = velocidad_prima1;
+						velocidad_prima1 = 0.95*velocidad_prima2 + 0.05*velocidad;
+		//				HAL_GPIO_TogglePin(Led_GPIO_Port, Led_Pin);
+					}
+					else{
+						ticksNow = ticksPrev;
+						ticksPrev = ticksAux;
+					}
+				} else{
+					// Tuve algun desborde y tengo que tenerlo en cuenta
+					deltaTicks = (ticksNow + overflow * cantTicksTmr2)- ticksPrev;/////////////////////////////////////////
+					if (deltaTicks > tickFilter){
+						velocidad = ((1/(float)ranuras)/((float)deltaTicks/(float)fsTmr2));
 
-				//Filtro IIR
-				velocidad_prima2 = velocidad_prima1;
-				velocidad_prima1 = 0.95*velocidad_prima2 + 0.05*velocidad;
-				HAL_GPIO_TogglePin(Led_GPIO_Port, Led_Pin);
+						//Filtro IIR
+						velocidad_prima2 = velocidad_prima1;
+						velocidad_prima1 = 0.95*velocidad_prima2 + 0.05*velocidad;
+		//				HAL_GPIO_TogglePin(Led_GPIO_Port, Led_Pin);
 
-				overflow = 0;
-			}
-			else{
-				HAL_GPIO_TogglePin(Led_GPIO_Port, Led_Pin);
-				ticksNow = ticksPrev;
-				ticksPrev = ticksAux;
-			}
-		}
+						overflow = 0;
+					}
+					else{
+		//				HAL_GPIO_TogglePin(Led_GPIO_Port, Led_Pin);
+						ticksNow = ticksPrev;
+						ticksPrev = ticksAux;
+					}
+				}
 	}
 
 }
@@ -526,10 +527,43 @@ void StartSpeed(void *argument)
 	/* Infinite loop */
 	for(;;)
 	{
+//		if (overflow == 0){
+//			// Todo cool, calculo normal
+//			deltaTicks = ticksNow - ticksPrev;
+//			if (deltaTicks > tickFilter){
+//				velocidad = ((1/(float)ranuras)/((float)deltaTicks/(float)fsTmr2));
+//
+//				//Filtro IIR
+//				velocidad_prima2 = velocidad_prima1;
+//				velocidad_prima1 = 0.95*velocidad_prima2 + 0.05*velocidad;
+////				HAL_GPIO_TogglePin(Led_GPIO_Port, Led_Pin);
+//			}
+//			else{
+//				ticksNow = ticksPrev;
+//				ticksPrev = ticksAux;
+//			}
+//		} else{
+//			// Tuve algun desborde y tengo que tenerlo en cuenta
+//			deltaTicks = (ticksNow + overflow * cantTicksTmr2)- ticksPrev;/////////////////////////////////////////
+//			if (deltaTicks > tickFilter){
+//				velocidad = ((1/(float)ranuras)/((float)deltaTicks/(float)fsTmr2));
+//
+//				//Filtro IIR
+//				velocidad_prima2 = velocidad_prima1;
+//				velocidad_prima1 = 0.95*velocidad_prima2 + 0.05*velocidad;
+////				HAL_GPIO_TogglePin(Led_GPIO_Port, Led_Pin);
+//
+//				overflow = 0;
+//			}
+//			else{
+////				HAL_GPIO_TogglePin(Led_GPIO_Port, Led_Pin);
+//				ticksNow = ticksPrev;
+//				ticksPrev = ticksAux;
+//			}
+//		}
 
 
-
-		osDelay(10);
+		osDelay(1);
 	}
   /* USER CODE END 5 */
 }
@@ -551,9 +585,15 @@ void StartModbus(void *argument)
 		HAL_GPIO_WritePin(IN1_1_GPIO_Port, IN1_1_Pin, GPIO_PIN_SET);
 		htim1.Instance->CCR1 = ModbusDATA[1];
 
-		memcpy(delta, &velocidad_prima1, sizeof(velocidad_prima1));
-		ModbusDATA[10]=delta[0];
-		ModbusDATA[11]=delta[1];
+		memcpy(delta, &deltaTicks, sizeof(deltaTicks));
+		ModbusDATA[8]=delta[0];
+		ModbusDATA[9]=delta[1];
+
+
+		memcpy(delta, &velocidad, sizeof(velocidad));
+				ModbusDATA[10]=delta[0];
+				ModbusDATA[11]=delta[1];
+
 		osDelay(50);
 	}
   /* USER CODE END StartModbus */
