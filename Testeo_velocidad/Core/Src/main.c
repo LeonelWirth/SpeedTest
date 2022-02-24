@@ -548,6 +548,11 @@ void StartModbus(void *argument)
 	/* Infinite loop */
 	for(;;)
 	{
+		if(overflow >= 2){
+			velocidad = 0;
+			velocidad_prima1 = 0;
+			overflow = 0;
+		}
 		HAL_GPIO_WritePin(IN1_1_GPIO_Port, IN1_1_Pin, GPIO_PIN_SET);
 		htim1.Instance->CCR1 = ModbusDATA[1];
 
