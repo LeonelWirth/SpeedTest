@@ -86,7 +86,7 @@ void StartModbus(void *argument);
 
 //---------------->  Modbus
 modbusHandler_t ModbusH;
-uint16_t ModbusDATA[13]={1,0,0,0,0,0,0,0,0,0,0,0,0}; // Mapa modbus!
+uint16_t ModbusDATA[3]={0,0,0}; // Mapa modbus!
 //---------------->
 
 float velocidad = 0;
@@ -103,16 +103,43 @@ uint32_t ticksAux = 0;
 
 char *prt;
 
+//Valores de linealización
+
+float p1[3]={1679,6338,27150};
+float p2[3]={537.9,-4066,-32070};
+
+float p = 650/0.02789;
+
+
+void funcion_linealizadora(uint16_t velocidadSetpoint){
+
+	float setp = (float)velocidadSetpoint;
+
+	if(setp/100.0 <= 0.02789){
+		htim1.Instance->CCR1=(uint32_t)(p*setp/100.0);
+	}
+
+	if(setp/100.0 > 0.02789 && setp/100.0<=0.991433){
+			htim1.Instance->CCR1=(uint32_t)(p1[0]*setp/100.0+p2[0]);
+		}
+
+	if(setp/100.0<=1.33372 && setp/100.0 > 0.991433) {
+				htim1.Instance->CCR1=(uint32_t)(p1[1]*setp/100.0+p2[1]);
+			}
+	if(setp/100.0 > 1.33372){
+		htim1.Instance->CCR1=(uint32_t)(p1[2]*setp/100.0+p2[2]);
+	}
+}
 
 
 
 void Variar_CCR(){
 
 	htim1.Instance->CCR1 += 200;
-	ModbusDATA[1]+=200;
+	ModbusDATA[0]+=200;
 	if(htim1.Instance->CCR1==10000){
 		htim1.Instance->CCR1 = 0;
-		ModbusDATA[1]=0;
+		ModbusDATA[0]=0;
 	}
 
 }
@@ -549,11 +576,12 @@ void StartModbus(void *argument)
 	for(;;)
 	{
 		HAL_GPIO_WritePin(IN1_1_GPIO_Port, IN1_1_Pin, GPIO_PIN_SET);
-		htim1.Instance->CCR1 = ModbusDATA[1];
+
+		funcion_linealizadora(ModbusDATA[0]);
 
 		memcpy(delta, &velocidad_prima1, sizeof(velocidad_prima1));
-		ModbusDATA[10]=delta[0];
-		ModbusDATA[11]=delta[1];
+		ModbusDATA[1]=delta[0];
+		ModbusDATA[2]=delta[1];
 		osDelay(50);
 	}
   /* USER CODE END StartModbus */
