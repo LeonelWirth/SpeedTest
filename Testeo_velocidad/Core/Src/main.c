@@ -64,6 +64,11 @@ const osThreadAttr_t Modbus_attributes = {
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
+/* Definitions for SpeedSemaphore */
+osSemaphoreId_t SpeedSemaphoreHandle;
+const osSemaphoreAttr_t SpeedSemaphore_attributes = {
+  .name = "SpeedSemaphore"
+};
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -107,7 +112,6 @@ char *prt;
 
 
 
-
 void Variar_CCR(){
 	htim1.Instance->CCR1 += 200;
 	ModbusDATA[1]+=200;
@@ -116,48 +120,13 @@ void Variar_CCR(){
 		ModbusDATA[1]=0;
 	}
 }
+
 void HAL_GPIO_EXTI_Callback (uint16_t GPIO_Pin){
 	if (GPIO_Pin == D01_Encoder_Pin){
 		ticksAux = ticksPrev;
 		ticksPrev = ticksNow;
 		ticksNow = __HAL_TIM_GetCounter(&htim2);
-
-
-
-		if (overflow == 0){
-					// Todo cool, calculo normal
-					deltaTicks = ticksNow - ticksPrev;
-					if (deltaTicks > tickFilter){
-						velocidad = ((1/(float)ranuras)/((float)deltaTicks/(float)fsTmr2));
-
-						//Filtro IIR
-						velocidad_prima2 = velocidad_prima1;
-						velocidad_prima1 = 0.95*velocidad_prima2 + 0.05*velocidad;
-		//				HAL_GPIO_TogglePin(Led_GPIO_Port, Led_Pin);
-					}
-					else{
-						ticksNow = ticksPrev;
-						ticksPrev = ticksAux;
-					}
-				} else{
-					// Tuve algun desborde y tengo que tenerlo en cuenta
-					deltaTicks = (ticksNow + overflow * cantTicksTmr2)- ticksPrev;/////////////////////////////////////////
-					if (deltaTicks > tickFilter){
-						velocidad = ((1/(float)ranuras)/((float)deltaTicks/(float)fsTmr2));
-
-						//Filtro IIR
-						velocidad_prima2 = velocidad_prima1;
-						velocidad_prima1 = 0.95*velocidad_prima2 + 0.05*velocidad;
-		//				HAL_GPIO_TogglePin(Led_GPIO_Port, Led_Pin);
-
-						overflow = 0;
-					}
-					else{
-		//				HAL_GPIO_TogglePin(Led_GPIO_Port, Led_Pin);
-						ticksNow = ticksPrev;
-						ticksPrev = ticksAux;
-					}
-				}
+		osSemaphoreRelease(SpeedSemaphoreHandle);
 	}
 
 }
@@ -226,6 +195,10 @@ int main(void)
   /* USER CODE BEGIN RTOS_MUTEX */
 	/* add mutexes, ... */
   /* USER CODE END RTOS_MUTEX */
+
+  /* Create the semaphores(s) */
+  /* creation of SpeedSemaphore */
+  SpeedSemaphoreHandle = osSemaphoreNew(1, 1, &SpeedSemaphore_attributes);
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
 	/* add semaphores, ... */
@@ -493,7 +466,7 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin : D01_Encoder_Pin */
   GPIO_InitStruct.Pin = D01_Encoder_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(D01_Encoder_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : IN1_2_Pin IN1_1_Pin */
@@ -523,47 +496,48 @@ static void MX_GPIO_Init(void)
 void StartSpeed(void *argument)
 {
   /* USER CODE BEGIN 5 */
-
+	uint32_t ticksPrev_l = 0;
+	uint32_t ticksNow_l = 0;
+	uint32_t ticksAux_l = 0;
+	uint32_t deltaTicks_l = 0;
 	/* Infinite loop */
 	for(;;)
 	{
-//		if (overflow == 0){
-//			// Todo cool, calculo normal
-//			deltaTicks = ticksNow - ticksPrev;
-//			if (deltaTicks > tickFilter){
-//				velocidad = ((1/(float)ranuras)/((float)deltaTicks/(float)fsTmr2));
-//
-//				//Filtro IIR
-//				velocidad_prima2 = velocidad_prima1;
-//				velocidad_prima1 = 0.95*velocidad_prima2 + 0.05*velocidad;
-////				HAL_GPIO_TogglePin(Led_GPIO_Port, Led_Pin);
-//			}
-//			else{
-//				ticksNow = ticksPrev;
-//				ticksPrev = ticksAux;
-//			}
-//		} else{
-//			// Tuve algun desborde y tengo que tenerlo en cuenta
-//			deltaTicks = (ticksNow + overflow * cantTicksTmr2)- ticksPrev;/////////////////////////////////////////
-//			if (deltaTicks > tickFilter){
-//				velocidad = ((1/(float)ranuras)/((float)deltaTicks/(float)fsTmr2));
-//
-//				//Filtro IIR
-//				velocidad_prima2 = velocidad_prima1;
-//				velocidad_prima1 = 0.95*velocidad_prima2 + 0.05*velocidad;
-////				HAL_GPIO_TogglePin(Led_GPIO_Port, Led_Pin);
-//
-//				overflow = 0;
-//			}
-//			else{
-////				HAL_GPIO_TogglePin(Led_GPIO_Port, Led_Pin);
-//				ticksNow = ticksPrev;
-//				ticksPrev = ticksAux;
-//			}
-//		}
+		osSemaphoreAcquire(SpeedSemaphoreHandle, osWaitForever);
+		ticksPrev_l = ticksPrev;
+		ticksNow_l = ticksNow;
+		ticksAux_l = ticksAux;
+		deltaTicks = deltaTicks_l;
 
-
-		osDelay(1);
+		if (overflow == 0 && ticksNow_l > ticksPrev_l){
+			// Todo cool, calculo normal
+			deltaTicks_l = ticksNow_l - ticksPrev_l;
+			if (deltaTicks_l > tickFilter){
+				velocidad = ((1/(float)ranuras)/((float)deltaTicks_l/(float)fsTmr2));
+				//Filtro IIR
+				velocidad_prima2 = velocidad_prima1;
+				velocidad_prima1 = 0.95*velocidad_prima2 + 0.05*velocidad;
+			}
+			else{
+				ticksNow_l = ticksPrev_l;
+				ticksPrev_l = ticksAux_l;
+			}
+		} else if (overflow == 1){
+			// Tuve algun desborde y tengo que tenerlo en cuenta
+			deltaTicks_l = (ticksNow_l + overflow * cantTicksTmr2)- ticksPrev_l;/////////////////////////////////////////
+			if (deltaTicks_l > tickFilter){
+				velocidad = ((1/(float)ranuras)/((float)deltaTicks_l/(float)fsTmr2));
+				//Filtro IIR
+				velocidad_prima2 = velocidad_prima1;
+				velocidad_prima1 = 0.95*velocidad_prima2 + 0.05*velocidad;
+				overflow = 0;
+			}
+			else{
+				ticksNow_l = ticksPrev_l;
+				ticksPrev_l = ticksAux_l;
+			}
+		}
+		//		osDelay(100);
 	}
   /* USER CODE END 5 */
 }
@@ -582,8 +556,10 @@ void StartModbus(void *argument)
 	/* Infinite loop */
 	for(;;)
 	{
+
 		HAL_GPIO_WritePin(IN1_1_GPIO_Port, IN1_1_Pin, GPIO_PIN_SET);
 		htim1.Instance->CCR1 = ModbusDATA[1];
+
 
 		memcpy(delta, &deltaTicks, sizeof(deltaTicks));
 		ModbusDATA[8]=delta[0];
@@ -591,8 +567,17 @@ void StartModbus(void *argument)
 
 
 		memcpy(delta, &velocidad, sizeof(velocidad));
-				ModbusDATA[10]=delta[0];
-				ModbusDATA[11]=delta[1];
+		ModbusDATA[10]=delta[0];
+		ModbusDATA[11]=delta[1];
+		ModbusDATA[5] = overflow;
+
+		if(overflow > 1){
+			velocidad = 0;
+			velocidad_prima1 = 0;
+			velocidad_prima2 = 0;
+			overflow = 0;
+		}
+
 
 		osDelay(50);
 	}
@@ -617,6 +602,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   /* USER CODE BEGIN Callback 1 */
 	if(htim->Instance == TIM2){
 		overflow += 1;
+
 	}
   /* USER CODE END Callback 1 */
 }
