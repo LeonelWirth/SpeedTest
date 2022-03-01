@@ -28,6 +28,10 @@
 
 #include "Modbus.h"
 #include "ModbusConfig.h"
+
+#include "Subsystem.c"
+#include "Subsystem.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -105,31 +109,31 @@ char *prt;
 
 //Valores de linealización
 
-float p1[3]={1679,6338,27150};
-float p2[3]={537.9,-4066,-32070};
+//float p1[3]={1679,6338,27150};
+//float p2[3]={537.9,-4066,-32070};
+//
+//float p = 650/0.02789;
 
-float p = 650/0.02789;
 
-
-void funcion_linealizadora(uint16_t velocidadSetpoint){
-
-	float setp = (float)velocidadSetpoint;
-
-	if(setp/100.0 <= 0.02789){
-		htim1.Instance->CCR1=(uint32_t)(p*setp/100.0);
-	}
-
-	if(setp/100.0 > 0.02789 && setp/100.0<=0.991433){
-			htim1.Instance->CCR1=(uint32_t)(p1[0]*setp/100.0+p2[0]);
-		}
-
-	if(setp/100.0<=1.33372 && setp/100.0 > 0.991433) {
-				htim1.Instance->CCR1=(uint32_t)(p1[1]*setp/100.0+p2[1]);
-			}
-	if(setp/100.0 > 1.33372){
-		htim1.Instance->CCR1=(uint32_t)(p1[2]*setp/100.0+p2[2]);
-	}
-}
+//void funcion_linealizadora(uint16_t velocidadSetpoint){
+//
+//	float setp = (float)velocidadSetpoint;
+//
+//	if(setp/100.0 <= 0.02789){
+//		htim1.Instance->CCR1=(uint32_t)(p*setp/100.0);
+//	}
+//
+//	if(setp/100.0 > 0.02789 && setp/100.0<=0.991433){
+//			htim1.Instance->CCR1=(uint32_t)(p1[0]*setp/100.0+p2[0]);
+//		}
+//
+//	if(setp/100.0<=1.33372 && setp/100.0 > 0.991433) {
+//				htim1.Instance->CCR1=(uint32_t)(p1[1]*setp/100.0+p2[1]);
+//			}
+//	if(setp/100.0 > 1.33372){
+//		htim1.Instance->CCR1=(uint32_t)(p1[2]*setp/100.0+p2[2]);
+//	}
+//}
 
 
 
@@ -222,7 +226,7 @@ int main(void)
   MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
 	HAL_TIM_Base_Start_IT(&htim2);
-
+	Subsystem_initialize();
 
 	// Definiciones para la biblioteca de modbus
 	ModbusH.uModbusType = MB_SLAVE;
@@ -572,12 +576,14 @@ void StartModbus(void *argument)
 {
   /* USER CODE BEGIN StartModbus */
 	uint16_t delta[2];// para mandar los deltaticks
+	HAL_GPIO_WritePin(IN1_1_GPIO_Port, IN1_1_Pin, GPIO_PIN_SET);
 	/* Infinite loop */
 	for(;;)
 	{
-		HAL_GPIO_WritePin(IN1_1_GPIO_Port, IN1_1_Pin, GPIO_PIN_SET);
 
-		funcion_linealizadora(ModbusDATA[0]);
+		rtU.Velocidad_setpoint = ModbusDATA[0];
+		Subsystem_step();
+		htim1.Instance->CCR1= rtY.Velocidad_linealizada;
 
 		memcpy(delta, &velocidad_prima1, sizeof(velocidad_prima1));
 		ModbusDATA[1]=delta[0];
