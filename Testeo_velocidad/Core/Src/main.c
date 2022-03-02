@@ -503,11 +503,14 @@ void StartSpeed(void *argument)
 	/* Infinite loop */
 	for(;;)
 	{
+
 		osSemaphoreAcquire(SpeedSemaphoreHandle, osWaitForever);
+		HAL_NVIC_DisableIRQ(EXTI1_IRQn);
 		ticksPrev_l = ticksPrev;
 		ticksNow_l = ticksNow;
 		ticksAux_l = ticksAux;
 		deltaTicks = deltaTicks_l;
+		HAL_NVIC_EnableIRQ(EXTI1_IRQn);
 
 		if (overflow == 0 && ticksNow_l > ticksPrev_l){
 			// Todo cool, calculo normal
@@ -553,6 +556,8 @@ void StartModbus(void *argument)
 {
   /* USER CODE BEGIN StartModbus */
 	uint16_t delta[2];// para mandar los deltaticks
+	uint16_t delta1[2];
+	uint16_t deltaticks[2];
 	/* Infinite loop */
 	for(;;)
 	{
@@ -561,14 +566,17 @@ void StartModbus(void *argument)
 		htim1.Instance->CCR1 = ModbusDATA[1];
 
 
-		memcpy(delta, &deltaTicks, sizeof(deltaTicks));
+		memcpy(deltaticks, &deltaTicks, sizeof(deltaTicks));
+		ModbusDATA[6]=deltaticks[0];
+		ModbusDATA[7]=deltaticks[1];
+
+		memcpy(delta, &velocidad_prima1, sizeof(velocidad_prima1));
 		ModbusDATA[8]=delta[0];
 		ModbusDATA[9]=delta[1];
 
-
-		memcpy(delta, &velocidad, sizeof(velocidad));
-		ModbusDATA[10]=delta[0];
-		ModbusDATA[11]=delta[1];
+		memcpy(delta1, &velocidad, sizeof(velocidad));
+		ModbusDATA[10]=delta1[0];
+		ModbusDATA[11]=delta1[1];
 		ModbusDATA[5] = overflow;
 
 		if(overflow > 1){
