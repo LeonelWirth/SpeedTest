@@ -29,8 +29,8 @@
 #include "Modbus.h"
 #include "ModbusConfig.h"
 
-#include "Subsystem.c"
-#include "Subsystem.h"
+//#include "Subsystem.c"
+//#include "Subsystem.h"
 
 /* USER CODE END Includes */
 
@@ -90,7 +90,7 @@ void StartModbus(void *argument);
 
 //---------------->  Modbus
 modbusHandler_t ModbusH;
-uint16_t ModbusDATA[3]={0,0,0}; // Mapa modbus!
+uint16_t ModbusDATA[5]={0,0,0,0,0}; // Mapa modbus!
 //---------------->
 
 float velocidad = 0;
@@ -226,7 +226,7 @@ int main(void)
   MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
 	HAL_TIM_Base_Start_IT(&htim2);
-	Subsystem_initialize();
+//	Subsystem_initialize();
 
 	// Definiciones para la biblioteca de modbus
 	ModbusH.uModbusType = MB_SLAVE;
@@ -576,18 +576,26 @@ void StartModbus(void *argument)
 {
   /* USER CODE BEGIN StartModbus */
 	uint16_t delta[2];// para mandar los deltaticks
+	uint16_t deltaticks[2];
 	HAL_GPIO_WritePin(IN1_1_GPIO_Port, IN1_1_Pin, GPIO_PIN_SET);
 	/* Infinite loop */
 	for(;;)
 	{
 
-		rtU.Velocidad_setpoint = ModbusDATA[0];
-		Subsystem_step();
-		htim1.Instance->CCR1= rtY.Velocidad_linealizada;
+//		rtU.Velocidad_setpoint = ModbusDATA[0];
+//		Subsystem_step();
+//		htim1.Instance->CCR1= rtY.Velocidad_linealizada;
 
+		htim1.Instance->CCR1= ModbusDATA[0];
 		memcpy(delta, &velocidad_prima1, sizeof(velocidad_prima1));
 		ModbusDATA[1]=delta[0];
 		ModbusDATA[2]=delta[1];
+
+		memcpy(deltaticks, &deltaTicks, sizeof(deltaTicks));
+		ModbusDATA[3]=deltaticks[0];
+		ModbusDATA[4]=deltaticks[1];
+
+
 		osDelay(50);
 	}
   /* USER CODE END StartModbus */
