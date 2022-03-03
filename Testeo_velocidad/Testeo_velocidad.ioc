@@ -2,7 +2,7 @@
 FREERTOS.BinarySemaphores01=SpeedSemaphore,Dynamic,NULL
 FREERTOS.FootprintOK=true
 FREERTOS.IPParameters=Tasks01,configUSE_NEWLIB_REENTRANT,FootprintOK,configLIBRARY_LOWEST_INTERRUPT_PRIORITY,BinarySemaphores01
-FREERTOS.Tasks01=Speed,48,128,StartSpeed,Default,NULL,Dynamic,NULL,NULL;Modbus,24,128,StartModbus,Default,NULL,Dynamic,NULL,NULL
+FREERTOS.Tasks01=Speed,48,128,StartSpeed,Default,NULL,Dynamic,NULL,NULL;Modbus,24,128,StartModbus,Default,NULL,Dynamic,NULL,NULL;CheckVelocidad,32,128,StartCheckVelocidad,Default,NULL,Dynamic,NULL,NULL
 FREERTOS.configLIBRARY_LOWEST_INTERRUPT_PRIORITY=10
 FREERTOS.configUSE_NEWLIB_REENTRANT=1
 File.Version=6
@@ -153,7 +153,7 @@ TIM1.Period=10000-1
 TIM1.Prescaler=72-1
 TIM2.AutoReloadPreload=TIM_AUTORELOAD_PRELOAD_ENABLE
 TIM2.IPParameters=Prescaler,Period,AutoReloadPreload
-TIM2.Period=50000-1
+TIM2.Period=10000-1
 TIM2.Prescaler=1440-1
 USART3.IPParameters=VirtualMode
 USART3.VirtualMode=VM_ASYNC
