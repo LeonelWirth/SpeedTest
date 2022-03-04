@@ -99,7 +99,7 @@ void StartCheckVelocidad(void *argument);
 
 //---------------->  Modbus
 modbusHandler_t ModbusH;
-uint16_t ModbusDATA[13]={1,0,0,0,0}; // Mapa modbus!
+uint16_t ModbusDATA[7]={0,0,0,0,0,0,0}; // Mapa modbus!
 //---------------->
 
 float velocidad = 0;
@@ -109,12 +109,10 @@ uint32_t ticksPrev = 0;
 uint32_t ticksNow = 0;
 uint32_t ticksAux = 0;
 uint32_t deltaTicks = 0;
-uint64_t tickFilter = 600; // Parametro delicado, puede hacer cagadas en la medicion de la velocidad, OJO
+
 
 uint16_t overflow = 0; // Cantidad de desbordes del timer
-uint32_t ranuras = 50;
-uint32_t cantTicksTmr2 = 10000;
-uint64_t fsTmr2= 50000;
+
 
 
 void Variar_CCR(){
@@ -383,7 +381,7 @@ static void MX_TIM2_Init(void)
 	htim2.Instance = TIM2;
 	htim2.Init.Prescaler = 1440-1;
 	htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-	htim2.Init.Period = 10000-1;
+	htim2.Init.Period = 20000-1;
 	htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
 	htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
 	if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
@@ -501,48 +499,82 @@ static void MX_GPIO_Init(void)
 void StartSpeed(void *argument)
 {
 	/* USER CODE BEGIN 5 */
+
+	uint32_t ranuras = 50;
+	uint32_t cantTicksTmr2 = 20000;
+	uint64_t fsTmr2= 50000;
+	uint64_t tickFilter = 600; // Parametro delicado, puede hacer cagadas en la medicion de la velocidad, OJO
+
 	uint32_t ticksPrev_l = 0;
 	uint32_t ticksNow_l = 0;
 	uint32_t ticksAux_l = 0;
 	uint32_t deltaTicks_l = 0;
+	uint16_t overflow_l =0;
+	float velocidad_prima2_l = 0;
+	float velocidad_prima1_l = 0;
+	float velocidad_l = 0;
 	/* Infinite loop */
 	for(;;)
 	{
-
 		osSemaphoreAcquire(SpeedSemaphoreHandle, osWaitForever);
-		HAL_NVIC_DisableIRQ(EXTI1_IRQn);
+		taskENTER_CRITICAL();
+
 		ticksPrev_l = ticksPrev;
 		ticksNow_l = ticksNow;
 		ticksAux_l = ticksAux;
-		deltaTicks = deltaTicks_l;
-		HAL_NVIC_EnableIRQ(EXTI1_IRQn);
+		overflow_l = overflow;
+		velocidad_l = velocidad;
+		velocidad_prima1_l = velocidad_prima1;
+		velocidad_prima2_l = velocidad_prima2;
 
-		if (overflow == 0){
+		taskEXIT_CRITICAL();
+
+		//		HAL_NVIC_EnableIRQ(EXTI1_IRQn);
+
+		if (overflow_l == 0){
 			// Todo cool, calculo normal
 			deltaTicks_l = ticksNow_l - ticksPrev_l;
 			if (deltaTicks_l > tickFilter){
-				velocidad = ((1/(float)ranuras)/((float)deltaTicks_l/(float)fsTmr2));
+				velocidad_l = ((1/(float)ranuras)/((float)deltaTicks_l/(float)fsTmr2));
 				//Filtro IIR
-				velocidad_prima2 = velocidad_prima1;
-				velocidad_prima1 = 0.95*velocidad_prima2 + 0.05*velocidad;
+				velocidad_prima2_l = velocidad_prima1_l;
+				velocidad_prima1_l = 0.9*velocidad_prima2_l + 0.1*velocidad_l;
+
+				taskENTER_CRITICAL();
+				deltaTicks = deltaTicks_l;
+				velocidad = velocidad_l;
+				velocidad_prima1 = velocidad_prima1_l;
+				velocidad_prima2 = velocidad_prima2_l;
+				taskEXIT_CRITICAL();
 			}
 			else{
-				ticksNow_l = ticksPrev_l;
-				ticksPrev_l = ticksAux_l;
+				taskENTER_CRITICAL();
+				ticksNow = ticksPrev_l;
+				ticksPrev = ticksAux_l;
+				taskEXIT_CRITICAL();
 			}
 		} else{
 			// Tuve algun desborde y tengo que tenerlo en cuenta
-			deltaTicks_l = (ticksNow_l + overflow * cantTicksTmr2)- ticksPrev_l;/////////////////////////////////////////
+			deltaTicks_l = (ticksNow_l + overflow_l * cantTicksTmr2)- ticksPrev_l;/////////////////////////////////////////
 			if (deltaTicks_l > tickFilter){
-				velocidad = ((1/(float)ranuras)/((float)deltaTicks_l/(float)fsTmr2));
+				velocidad_l = ((1/(float)ranuras)/((float)deltaTicks_l/(float)fsTmr2));
 				//Filtro IIR
-				velocidad_prima2 = velocidad_prima1;
-				velocidad_prima1 = 0.95*velocidad_prima2 + 0.05*velocidad;
+				velocidad_prima2_l = velocidad_prima1_l;
+				velocidad_prima1_l = 0.9*velocidad_prima2_l + 0.1*velocidad_l;
+
+				taskENTER_CRITICAL();
 				overflow = 0;
+				deltaTicks = deltaTicks_l;
+				velocidad = velocidad_l;
+				velocidad_prima1 = velocidad_prima1_l;
+				velocidad_prima2 = velocidad_prima2_l;
+				taskEXIT_CRITICAL();
 			}
 			else{
-				ticksNow_l = ticksPrev_l;
-				ticksPrev_l = ticksAux_l;
+				taskENTER_CRITICAL();
+				ticksNow = ticksPrev_l;
+				ticksPrev = ticksAux_l;
+				taskEXIT_CRITICAL();
 			}
 		}
 		//		osDelay(100);
@@ -563,26 +595,53 @@ void StartModbus(void *argument)
 	uint16_t delta[2];// para mandar los deltaticks
 	uint16_t delta1[2];
 	uint16_t deltaticks[2];
+
+
+	float velocidad_l = 0;
+	float velocidad_prima1_l = 0;
+	uint32_t deltaTicks_l = 0;
+	uint16_t ModbusDATA_l[7] = {'\0'};
 	/* Infinite loop */
 	for(;;)
 	{
+		taskENTER_CRITICAL();
+		deltaTicks_l = deltaTicks;
+		velocidad_l = velocidad;
+		velocidad_prima1_l = velocidad_prima1;
+		ModbusDATA_l[0] = ModbusDATA[0];
+		taskEXIT_CRITICAL();
 
 		HAL_GPIO_WritePin(IN1_1_GPIO_Port, IN1_1_Pin, GPIO_PIN_SET);
-		htim1.Instance->CCR1 = ModbusDATA[0];
+		htim1.Instance->CCR1 = ModbusDATA_l[0];
 
 
-		memcpy(deltaticks, &deltaTicks, sizeof(deltaTicks));
-		ModbusDATA[1]=deltaticks[0];
-		ModbusDATA[2]=deltaticks[1];
 
-		memcpy(delta, &velocidad_prima1, sizeof(velocidad_prima1));
-		ModbusDATA[3]=delta[0];
-		ModbusDATA[4]=delta[1];
+		memcpy(deltaticks, &deltaTicks_l, sizeof(deltaTicks_l));
+		ModbusDATA_l[1]=deltaticks[0];
+		ModbusDATA_l[2]=deltaticks[1];
 
-//		memcpy(delta1, &velocidad, sizeof(velocidad));
-//		ModbusDATA[10]=delta1[0];
-//		ModbusDATA[11]=delta1[1];
-//		ModbusDATA[5] = overflow;
+		memcpy(delta, &velocidad_l, sizeof(velocidad_l));
+		ModbusDATA_l[3]=delta[0];
+		ModbusDATA_l[4]=delta[1];
+
+		memcpy(delta1, &velocidad_prima1_l, sizeof(velocidad_prima1_l));
+		ModbusDATA_l[5]=delta1[0];
+		ModbusDATA_l[6]=delta1[1];
+
+		taskENTER_CRITICAL();
+		ModbusDATA[0] = ModbusDATA_l[0];
+		ModbusDATA[1] = ModbusDATA_l[1];
+		ModbusDATA[2] = ModbusDATA_l[2];
+		ModbusDATA[3] = ModbusDATA_l[3];
+		ModbusDATA[4] = ModbusDATA_l[4];
+		ModbusDATA[5] = ModbusDATA_l[5];
+		ModbusDATA[6] = ModbusDATA_l[6];
+		taskEXIT_CRITICAL();
+
+		//		memcpy(delta1, &velocidad, sizeof(velocidad));
+		//		ModbusDATA[10]=delta1[0];
+		//		ModbusDATA[11]=delta1[1];
+		//		ModbusDATA[5] = overflow;
 
 		osDelay(50);
 	}
@@ -599,14 +658,24 @@ void StartModbus(void *argument)
 void StartCheckVelocidad(void *argument)
 {
 	/* USER CODE BEGIN StartCheckVelocidad */
+
+	uint16_t overflow_l =0;
+
+
 	/* Infinite loop */
 	for(;;)
 	{
-		if(overflow >= 2){
-			velocidad = 0;
-			velocidad_prima1 = 0;
-			velocidad_prima2 = 0;
+		taskENTER_CRITICAL();
+		overflow_l = overflow;
+		taskEXIT_CRITICAL();
+
+		if(overflow_l >= 2){
+			taskENTER_CRITICAL();
 			overflow = 0;
+			velocidad_prima2 = 0;
+			velocidad_prima1 = 0;
+			velocidad = 0;
+			taskEXIT_CRITICAL();
 		}
 		osDelay(10);
 	}
