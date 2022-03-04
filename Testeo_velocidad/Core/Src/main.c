@@ -591,12 +591,12 @@ void StartModbus(void *argument)
 
 		htim1.Instance->CCR1= ModbusDATA[0];
 		memcpy(delta, &velocidad_prima1, sizeof(velocidad_prima1));
-		ModbusDATA[1]=delta[0];
-		ModbusDATA[2]=delta[1];
+		ModbusDATA[3]=delta[0];
+		ModbusDATA[4]=delta[1];
 
 		memcpy(deltaticks, &deltaTicks, sizeof(deltaTicks));
-		ModbusDATA[3]=deltaticks[0];
-		ModbusDATA[4]=deltaticks[1];
+		ModbusDATA[1]=deltaticks[0];
+		ModbusDATA[2]=deltaticks[1];
 		osDelay(50);
 
 

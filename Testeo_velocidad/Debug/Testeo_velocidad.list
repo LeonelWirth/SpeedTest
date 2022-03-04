@@ -6384,27 +6384,27 @@ void StartModbus(void *argument)
  8002f9c:	681b      	ldr	r3, [r3, #0]
 		memcpy(delta, &velocidad_prima1, sizeof(velocidad_prima1));
  8002f9e:	60fb      	str	r3, [r7, #12]
-		ModbusDATA[1]=delta[0];
+		ModbusDATA[3]=delta[0];
  8002fa0:	89ba      	ldrh	r2, [r7, #12]
  8002fa2:	4b0a      	ldr	r3, [pc, #40]	; (8002fcc <StartModbus+0x50>)
- 8002fa4:	805a      	strh	r2, [r3, #2]
-		ModbusDATA[2]=delta[1];
+ 8002fa4:	80da      	strh	r2, [r3, #6]
+		ModbusDATA[4]=delta[1];
  8002fa6:	89fa      	ldrh	r2, [r7, #14]
  8002fa8:	4b08      	ldr	r3, [pc, #32]	; (8002fcc <StartModbus+0x50>)
- 8002faa:	809a      	strh	r2, [r3, #4]
+ 8002faa:	811a      	strh	r2, [r3, #8]
  8002fac:	4b0a      	ldr	r3, [pc, #40]	; (8002fd8 <StartModbus+0x5c>)
  8002fae:	681b      	ldr	r3, [r3, #0]
 
 		memcpy(deltaticks, &deltaTicks, sizeof(deltaTicks));
  8002fb0:	60bb      	str	r3, [r7, #8]
-		ModbusDATA[3]=deltaticks[0];
+		ModbusDATA[1]=deltaticks[0];
  8002fb2:	893a      	ldrh	r2, [r7, #8]
  8002fb4:	4b05      	ldr	r3, [pc, #20]	; (8002fcc <StartModbus+0x50>)
- 8002fb6:	80da      	strh	r2, [r3, #6]
-		ModbusDATA[4]=deltaticks[1];
+ 8002fb6:	805a      	strh	r2, [r3, #2]
+		ModbusDATA[2]=deltaticks[1];
  8002fb8:	897a      	ldrh	r2, [r7, #10]
  8002fba:	4b04      	ldr	r3, [pc, #16]	; (8002fcc <StartModbus+0x50>)
- 8002fbc:	811a      	strh	r2, [r3, #8]
+ 8002fbc:	809a      	strh	r2, [r3, #4]
 		osDelay(50);
  8002fbe:	2032      	movs	r0, #50	; 0x32
  8002fc0:	f003 f8e4 	bl	800618c <osDelay>
