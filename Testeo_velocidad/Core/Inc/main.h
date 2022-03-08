@@ -64,10 +64,22 @@ void Error_Handler(void);
 #define D01_Encoder_Pin GPIO_PIN_1
 #define D01_Encoder_GPIO_Port GPIOA
 #define D01_Encoder_EXTI_IRQn EXTI1_IRQn
+#define IN2_1_Pin GPIO_PIN_12
+#define IN2_1_GPIO_Port GPIOB
+#define IN2_2_Pin GPIO_PIN_13
+#define IN2_2_GPIO_Port GPIOB
 #define IN1_2_Pin GPIO_PIN_14
 #define IN1_2_GPIO_Port GPIOB
 #define IN1_1_Pin GPIO_PIN_15
 #define IN1_1_GPIO_Port GPIOB
+#define IN4_1_Pin GPIO_PIN_12
+#define IN4_1_GPIO_Port GPIOA
+#define IN4_2_Pin GPIO_PIN_15
+#define IN4_2_GPIO_Port GPIOA
+#define IN3_2_Pin GPIO_PIN_3
+#define IN3_2_GPIO_Port GPIOB
+#define IN3_1_Pin GPIO_PIN_4
+#define IN3_1_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */
