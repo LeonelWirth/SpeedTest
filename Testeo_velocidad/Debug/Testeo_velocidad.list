@@ -6382,7 +6382,7 @@ void StartModbus(void *argument)
  8002f98:	635a      	str	r2, [r3, #52]	; 0x34
  8002f9a:	4b0e      	ldr	r3, [pc, #56]	; (8002fd4 <StartModbus+0x58>)
  8002f9c:	681b      	ldr	r3, [r3, #0]
-		memcpy(delta, &velocidad_prima1, sizeof(velocidad_prima1));
+		memcpy(delta, &velocidad, sizeof(velocidad));
  8002f9e:	60fb      	str	r3, [r7, #12]
 		ModbusDATA[3]=delta[0];
  8002fa0:	89ba      	ldrh	r2, [r7, #12]
@@ -6414,7 +6414,7 @@ void StartModbus(void *argument)
  8002fc8:	40010c00 	.word	0x40010c00
  8002fcc:	20000214 	.word	0x20000214
  8002fd0:	20001da4 	.word	0x20001da4
- 8002fd4:	20001dec 	.word	0x20001dec
+ 8002fd4:	20000220 	.word	0x20000220
  8002fd8:	20000230 	.word	0x20000230
 
 08002fdc <HAL_TIM_PeriodElapsedCallback>:

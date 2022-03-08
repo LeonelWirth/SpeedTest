@@ -590,7 +590,7 @@ void StartModbus(void *argument)
 //		htim1.Instance->CCR1= rtY.Velocidad_linealizada;
 
 		htim1.Instance->CCR1= ModbusDATA[0];
-		memcpy(delta, &velocidad_prima1, sizeof(velocidad_prima1));
+		memcpy(delta, &velocidad, sizeof(velocidad));
 		ModbusDATA[3]=delta[0];
 		ModbusDATA[4]=delta[1];
 
