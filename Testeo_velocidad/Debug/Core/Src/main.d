@@ -39,7 +39,15 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
  ../Middlewares/Third_Party/FreeRTOS/Source/include/queue.h \
  ../Middlewares/Third_Party/FreeRTOS/Source/include/timers.h \
  ../Middlewares/Third_Party/FreeRTOS/Source/include/task.h \
- ../Core/Inc/ModbusConfig.h
+ ../Core/Inc/ModbusConfig.h \
+ D:/Facu/Facultad/Tesis/codes/Main\ code/Placa-de-control-PIP/stm32_PIP/Simulink/Subsystem_ert_rtw/Subsystem.c \
+ D:/Facu/Facultad/Tesis/codes/Main\ code/Placa-de-control-PIP/stm32_PIP/Simulink/Subsystem_ert_rtw/Subsystem.h \
+ D:/Facu/Facultad/Tesis/codes/Main\ code/Placa-de-control-PIP/stm32_PIP/Simulink/Subsystem_ert_rtw/rtwtypes.h \
+ D:/Facu/Facultad/Tesis/codes/Main\ code/Placa-de-control-PIP/stm32_PIP/Simulink/Subsystem_ert_rtw/Subsystem.h \
+ D:/Facu/Facultad/Tesis/codes/Main\ code/Placa-de-control-PIP/stm32_PIP/Simulink/contol_ert_rtw/Contol.c \
+ D:/Facu/Facultad/Tesis/codes/Main\ code/Placa-de-control-PIP/stm32_PIP/Simulink/contol_ert_rtw/contol.h \
+ D:/Facu/Facultad/Tesis/codes/Main\ code/Placa-de-control-PIP/stm32_PIP/Simulink/contol_ert_rtw/rtwtypes.h \
+ D:/Facu/Facultad/Tesis/codes/Main\ code/Placa-de-control-PIP/stm32_PIP/Simulink/contol_ert_rtw/Contol.h
 
 ../Core/Inc/main.h:
 
@@ -126,3 +134,19 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
 ../Middlewares/Third_Party/FreeRTOS/Source/include/task.h:
 
 ../Core/Inc/ModbusConfig.h:
+
+D:/Facu/Facultad/Tesis/codes/Main\ code/Placa-de-control-PIP/stm32_PIP/Simulink/Subsystem_ert_rtw/Subsystem.c:
+
+D:/Facu/Facultad/Tesis/codes/Main\ code/Placa-de-control-PIP/stm32_PIP/Simulink/Subsystem_ert_rtw/Subsystem.h:
+
+D:/Facu/Facultad/Tesis/codes/Main\ code/Placa-de-control-PIP/stm32_PIP/Simulink/Subsystem_ert_rtw/rtwtypes.h:
+
+D:/Facu/Facultad/Tesis/codes/Main\ code/Placa-de-control-PIP/stm32_PIP/Simulink/Subsystem_ert_rtw/Subsystem.h:
+
+D:/Facu/Facultad/Tesis/codes/Main\ code/Placa-de-control-PIP/stm32_PIP/Simulink/contol_ert_rtw/Contol.c:
+
+D:/Facu/Facultad/Tesis/codes/Main\ code/Placa-de-control-PIP/stm32_PIP/Simulink/contol_ert_rtw/contol.h:
+
+D:/Facu/Facultad/Tesis/codes/Main\ code/Placa-de-control-PIP/stm32_PIP/Simulink/contol_ert_rtw/rtwtypes.h:
+
+D:/Facu/Facultad/Tesis/codes/Main\ code/Placa-de-control-PIP/stm32_PIP/Simulink/contol_ert_rtw/Contol.h:
