@@ -32,8 +32,8 @@
 #include "Subsystem.c"
 #include "Subsystem.h"
 
-#include "contol.c"
-#include "contol.h"
+#include "control.c"
+#include "control.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -61,7 +61,7 @@ osThreadId_t SpeedHandle;
 const osThreadAttr_t Speed_attributes = {
   .name = "Speed",
   .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityRealtime,
+  .priority = (osPriority_t) osPriorityHigh,
 };
 /* Definitions for Modbus */
 osThreadId_t ModbusHandle;
@@ -76,6 +76,13 @@ const osThreadAttr_t CheckVelocidad_attributes = {
   .name = "CheckVelocidad",
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityAboveNormal,
+};
+/* Definitions for ControlTask */
+osThreadId_t ControlTaskHandle;
+const osThreadAttr_t ControlTask_attributes = {
+  .name = "ControlTask",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityRealtime,
 };
 /* Definitions for SpeedSemaphore */
 osSemaphoreId_t SpeedSemaphoreHandle;
@@ -95,6 +102,7 @@ static void MX_USART3_UART_Init(void);
 void StartSpeed(void *argument);
 void StartModbus(void *argument);
 void StartCheckVelocidad(void *argument);
+void StartControlTask(void *argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -174,6 +182,8 @@ int main(void)
   MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
 	HAL_TIM_Base_Start_IT(&htim2);
+	Subsystem_initialize();
+	control_initialize();
 
 
 	// Definiciones para la biblioteca de modbus
@@ -229,6 +239,9 @@ int main(void)
 
   /* creation of CheckVelocidad */
   CheckVelocidadHandle = osThreadNew(StartCheckVelocidad, NULL, &CheckVelocidad_attributes);
+
+  /* creation of ControlTask */
+  ControlTaskHandle = osThreadNew(StartControlTask, NULL, &ControlTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
 	/* add threads, ... */
@@ -630,6 +643,7 @@ void StartModbus(void *argument)
 	/* Infinite loop */
 	for(;;)
 	{
+		HAL_GPIO_TogglePin(Led_GPIO_Port, Led_Pin);
 		taskENTER_CRITICAL();
 		deltaTicks_l = deltaTicks;
 		velocidad_l = velocidad;
@@ -640,8 +654,8 @@ void StartModbus(void *argument)
 		HAL_GPIO_WritePin(IN1_1_GPIO_Port, IN1_1_Pin, GPIO_PIN_SET);
 		HAL_GPIO_WritePin(IN3_1_GPIO_Port, IN3_1_Pin, GPIO_PIN_SET);
 		HAL_GPIO_WritePin(IN4_1_GPIO_Port, IN4_1_Pin, GPIO_PIN_SET);
-		htim1.Instance->CCR3 = ModbusDATA_l[0];
-		htim1.Instance->CCR4 = ModbusDATA_l[0];
+//		htim1.Instance->CCR3 = ModbusDATA_l[0];
+//		htim1.Instance->CCR4 = ModbusDATA_l[0];
 
 
 
@@ -672,7 +686,7 @@ void StartModbus(void *argument)
 		//		ModbusDATA[11]=delta1[1];
 		//		ModbusDATA[5] = overflow;
 
-		osDelay(50);
+		osDelay(500);
 	}
   /* USER CODE END StartModbus */
 }
@@ -694,21 +708,69 @@ void StartCheckVelocidad(void *argument)
 	/* Infinite loop */
 	for(;;)
 	{
-		taskENTER_CRITICAL();
-		overflow_l = overflow;
-		taskEXIT_CRITICAL();
-
-		if(overflow_l >= 2){
-			taskENTER_CRITICAL();
-			overflow = 0;
-			velocidad_prima2 = 0;
-			velocidad_prima1 = 0;
-			velocidad = 0;
-			taskEXIT_CRITICAL();
-		}
-		osDelay(10);
+//		HAL_GPIO_TogglePin(Led_GPIO_Port, Led_Pin);
+//		taskENTER_CRITICAL();
+//		overflow_l = overflow;
+//		taskEXIT_CRITICAL();
+//
+//		if(overflow_l >= 2){
+//			taskENTER_CRITICAL();
+//			overflow = 0;
+//			velocidad_prima2 = 0;
+//			velocidad_prima1 = 0;
+//			velocidad = 0;
+//			taskEXIT_CRITICAL();
+//		}
+		osDelay(1000);
 	}
   /* USER CODE END StartCheckVelocidad */
+}
+
+/* USER CODE BEGIN Header_StartControlTask */
+/**
+ * @brief Function implementing the ControlTask thread.
+ * @param argument: Not used
+ * @retval None
+ */
+/* USER CODE END Header_StartControlTask */
+void StartControlTask(void *argument)
+{
+  /* USER CODE BEGIN StartControlTask */
+	float velocidad_prima1_l = 0;
+	float Setpoint = 0;
+
+
+	/* Infinite loop */
+	for(;;)
+	{
+//		HAL_GPIO_TogglePin(Led_GPIO_Port, Led_Pin);
+		HAL_GPIO_WritePin(IN3_1_GPIO_Port, IN3_1_Pin, GPIO_PIN_SET);
+		HAL_GPIO_WritePin(IN4_1_GPIO_Port, IN4_1_Pin, GPIO_PIN_SET);
+		htim1.Instance->CCR4 = 1000;
+		htim1.Instance->CCR3 =1000;
+
+		//		taskENTER_CRITICAL();
+		//		velocidad_prima1_l = velocidad_prima1;
+		//		Setpoint = ModbusDATA[0]/1000;
+		//		taskEXIT_CRITICAL();
+		//
+		//		rtEntrada_Control = Setpoint - velocidad_prima1_l; //Error para PID
+		//		control_step(); //Ejecutamos control
+		//
+		//		rtSalida_Control = rtdelta_w;	//Salida PID asignada a entrada de planta linealizadora
+		//		Subsystem_step();	//Ejecutamos planta linealizadora
+		//
+		//		htim1.Instance->CCR3 = rtVelocidad_linealizada;	//Salida linealizada asignada a CCR
+		//		htim1.Instance->CCR3 = 1000;
+
+		//		taskENTER_CRITICAL();
+		//		velocidad_prima1_l = velocidad_prima1;
+		//		Setpoint = ModbusDATA[0]/1000;
+		//		taskEXIT_CRITICAL();
+
+		osDelay(500);
+	}
+  /* USER CODE END StartControlTask */
 }
 
 /**
