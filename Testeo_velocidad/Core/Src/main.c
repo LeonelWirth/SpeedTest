@@ -60,29 +60,29 @@ UART_HandleTypeDef huart3;
 osThreadId_t SpeedHandle;
 const osThreadAttr_t Speed_attributes = {
   .name = "Speed",
-  .stack_size = 128 * 4,
+  .stack_size = 256 * 4,
   .priority = (osPriority_t) osPriorityHigh,
 };
 /* Definitions for Modbus */
 osThreadId_t ModbusHandle;
 const osThreadAttr_t Modbus_attributes = {
   .name = "Modbus",
-  .stack_size = 128 * 4,
+  .stack_size = 256 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
 /* Definitions for CheckVelocidad */
 osThreadId_t CheckVelocidadHandle;
 const osThreadAttr_t CheckVelocidad_attributes = {
   .name = "CheckVelocidad",
-  .stack_size = 128 * 4,
+  .stack_size = 256 * 4,
   .priority = (osPriority_t) osPriorityAboveNormal,
 };
-/* Definitions for ControlTask */
-osThreadId_t ControlTaskHandle;
-const osThreadAttr_t ControlTask_attributes = {
-  .name = "ControlTask",
-  .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityRealtime,
+/* Definitions for TaskControl */
+osThreadId_t TaskControlHandle;
+const osThreadAttr_t TaskControl_attributes = {
+  .name = "TaskControl",
+  .stack_size = 256 * 4,
+  .priority = (osPriority_t) osPriorityLow,
 };
 /* Definitions for SpeedSemaphore */
 osSemaphoreId_t SpeedSemaphoreHandle;
@@ -102,7 +102,7 @@ static void MX_USART3_UART_Init(void);
 void StartSpeed(void *argument);
 void StartModbus(void *argument);
 void StartCheckVelocidad(void *argument);
-void StartControlTask(void *argument);
+void StartTaskControl(void *argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -128,23 +128,14 @@ uint32_t deltaTicks = 0;
 uint16_t overflow = 0; // Cantidad de desbordes del timer
 
 
-
-void Variar_CCR(){
-	htim1.Instance->CCR1 += 200;
-	ModbusDATA[1]+=200;
-	if(htim1.Instance->CCR1==10000){
-		htim1.Instance->CCR1 = 0;
-		ModbusDATA[1]=0;
-	}
-}
-
 void HAL_GPIO_EXTI_Callback (uint16_t GPIO_Pin){
-	if (GPIO_Pin == D01_Encoder_Pin){
+	if (GPIO_Pin == D02_Encoder_Pin){
 		ticksAux = ticksPrev;
 		ticksPrev = ticksNow;
 		ticksNow = __HAL_TIM_GetCounter(&htim2);
 		osSemaphoreRelease(SpeedSemaphoreHandle);
 	}
+
 
 }
 /* USER CODE END 0 */
@@ -202,6 +193,7 @@ int main(void)
 	ModbusStart(&ModbusH);
 
 	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
+	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
 	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
 	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
 	//  	HAL_UART_Transmit(&huart3, (uint8_t*)"V\n", 3*sizeof(char), HAL_MAX_DELAY);
@@ -240,8 +232,8 @@ int main(void)
   /* creation of CheckVelocidad */
   CheckVelocidadHandle = osThreadNew(StartCheckVelocidad, NULL, &CheckVelocidad_attributes);
 
-  /* creation of ControlTask */
-  ControlTaskHandle = osThreadNew(StartControlTask, NULL, &ControlTask_attributes);
+  /* creation of TaskControl */
+  TaskControlHandle = osThreadNew(StartTaskControl, NULL, &TaskControl_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
 	/* add threads, ... */
@@ -360,6 +352,10 @@ static void MX_TIM1_Init(void)
   sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
   sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
   if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
   {
     Error_Handler();
   }
@@ -486,7 +482,8 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(Led_GPIO_Port, Led_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, IN1_2_Pin|IN1_1_Pin|IN3_2_Pin|IN3_1_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, IN2_1_Pin|IN2_2_Pin|IN1_2_Pin|IN1_1_Pin
+                          |IN3_2_Pin|IN3_1_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOA, IN4_1_Pin|IN4_2_Pin, GPIO_PIN_RESET);
@@ -504,8 +501,16 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(D01_Encoder_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : IN1_2_Pin IN1_1_Pin IN3_2_Pin IN3_1_Pin */
-  GPIO_InitStruct.Pin = IN1_2_Pin|IN1_1_Pin|IN3_2_Pin|IN3_1_Pin;
+  /*Configure GPIO pins : D02_Encoder_Pin D03_Encoder_Pin */
+  GPIO_InitStruct.Pin = D02_Encoder_Pin|D03_Encoder_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : IN2_1_Pin IN2_2_Pin IN1_2_Pin IN1_1_Pin
+                           IN3_2_Pin IN3_1_Pin */
+  GPIO_InitStruct.Pin = IN2_1_Pin|IN2_2_Pin|IN1_2_Pin|IN1_1_Pin
+                          |IN3_2_Pin|IN3_1_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -521,6 +526,9 @@ static void MX_GPIO_Init(void)
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI1_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(EXTI1_IRQn);
+
+  HAL_NVIC_SetPriority(EXTI2_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(EXTI2_IRQn);
 
 }
 
@@ -577,7 +585,7 @@ void StartSpeed(void *argument)
 				velocidad_l = ((1/(float)ranuras)/((float)deltaTicks_l/(float)fsTmr2));
 				//Filtro IIR
 				velocidad_prima2_l = velocidad_prima1_l;
-				velocidad_prima1_l = 0.9*velocidad_prima2_l + 0.1*velocidad_l;
+				velocidad_prima1_l = 0.92*velocidad_prima2_l + 0.08*velocidad_l;
 
 				taskENTER_CRITICAL();
 				deltaTicks = deltaTicks_l;
@@ -599,7 +607,7 @@ void StartSpeed(void *argument)
 				velocidad_l = ((1/(float)ranuras)/((float)deltaTicks_l/(float)fsTmr2));
 				//Filtro IIR
 				velocidad_prima2_l = velocidad_prima1_l;
-				velocidad_prima1_l = 0.9*velocidad_prima2_l + 0.1*velocidad_l;
+				velocidad_prima1_l = 0.92*velocidad_prima2_l + 0.08*velocidad_l;
 
 				taskENTER_CRITICAL();
 				overflow = 0;
@@ -616,7 +624,7 @@ void StartSpeed(void *argument)
 				taskEXIT_CRITICAL();
 			}
 		}
-		//		osDelay(100);
+				osDelay(1);
 	}
   /* USER CODE END 5 */
 }
@@ -643,7 +651,7 @@ void StartModbus(void *argument)
 	/* Infinite loop */
 	for(;;)
 	{
-		HAL_GPIO_TogglePin(Led_GPIO_Port, Led_Pin);
+		//HAL_GPIO_TogglePin(Led_GPIO_Port, Led_Pin);
 		taskENTER_CRITICAL();
 		deltaTicks_l = deltaTicks;
 		velocidad_l = velocidad;
@@ -652,10 +660,12 @@ void StartModbus(void *argument)
 		taskEXIT_CRITICAL();
 
 		HAL_GPIO_WritePin(IN1_1_GPIO_Port, IN1_1_Pin, GPIO_PIN_SET);
+		HAL_GPIO_WritePin(IN2_1_GPIO_Port, IN2_1_Pin, GPIO_PIN_SET);
 		HAL_GPIO_WritePin(IN3_1_GPIO_Port, IN3_1_Pin, GPIO_PIN_SET);
 		HAL_GPIO_WritePin(IN4_1_GPIO_Port, IN4_1_Pin, GPIO_PIN_SET);
-//		htim1.Instance->CCR3 = ModbusDATA_l[0];
-//		htim1.Instance->CCR4 = ModbusDATA_l[0];
+		htim1.Instance->CCR1 = ModbusDATA_l[0];
+		htim1.Instance->CCR2 = ModbusDATA_l[0];
+		htim1.Instance->CCR4 = ModbusDATA_l[0];
 
 
 
@@ -681,12 +691,7 @@ void StartModbus(void *argument)
 		ModbusDATA[6] = ModbusDATA_l[6];
 		taskEXIT_CRITICAL();
 
-		//		memcpy(delta1, &velocidad, sizeof(velocidad));
-		//		ModbusDATA[10]=delta1[0];
-		//		ModbusDATA[11]=delta1[1];
-		//		ModbusDATA[5] = overflow;
-
-		osDelay(500);
+		osDelay(10);
 	}
   /* USER CODE END StartModbus */
 }
@@ -708,69 +713,40 @@ void StartCheckVelocidad(void *argument)
 	/* Infinite loop */
 	for(;;)
 	{
-//		HAL_GPIO_TogglePin(Led_GPIO_Port, Led_Pin);
-//		taskENTER_CRITICAL();
-//		overflow_l = overflow;
-//		taskEXIT_CRITICAL();
-//
-//		if(overflow_l >= 2){
-//			taskENTER_CRITICAL();
-//			overflow = 0;
-//			velocidad_prima2 = 0;
-//			velocidad_prima1 = 0;
-//			velocidad = 0;
-//			taskEXIT_CRITICAL();
-//		}
-		osDelay(1000);
+		taskENTER_CRITICAL();
+		overflow_l = overflow;
+		taskEXIT_CRITICAL();
+
+		if(overflow_l >= 2){
+			taskENTER_CRITICAL();
+			overflow = 0;
+			velocidad_prima2 = 0;
+			velocidad_prima1 = 0;
+			velocidad = 0;
+			taskEXIT_CRITICAL();
+		}
+		osDelay(20);
 	}
   /* USER CODE END StartCheckVelocidad */
 }
 
-/* USER CODE BEGIN Header_StartControlTask */
+/* USER CODE BEGIN Header_StartTaskControl */
 /**
- * @brief Function implementing the ControlTask thread.
- * @param argument: Not used
- * @retval None
- */
-/* USER CODE END Header_StartControlTask */
-void StartControlTask(void *argument)
+* @brief Function implementing the TaskControl thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartTaskControl */
+void StartTaskControl(void *argument)
 {
-  /* USER CODE BEGIN StartControlTask */
-	float velocidad_prima1_l = 0;
-	float Setpoint = 0;
-
-
-	/* Infinite loop */
-	for(;;)
-	{
-//		HAL_GPIO_TogglePin(Led_GPIO_Port, Led_Pin);
-		HAL_GPIO_WritePin(IN3_1_GPIO_Port, IN3_1_Pin, GPIO_PIN_SET);
-		HAL_GPIO_WritePin(IN4_1_GPIO_Port, IN4_1_Pin, GPIO_PIN_SET);
-		htim1.Instance->CCR4 = 1000;
-		htim1.Instance->CCR3 =1000;
-
-		//		taskENTER_CRITICAL();
-		//		velocidad_prima1_l = velocidad_prima1;
-		//		Setpoint = ModbusDATA[0]/1000;
-		//		taskEXIT_CRITICAL();
-		//
-		//		rtEntrada_Control = Setpoint - velocidad_prima1_l; //Error para PID
-		//		control_step(); //Ejecutamos control
-		//
-		//		rtSalida_Control = rtdelta_w;	//Salida PID asignada a entrada de planta linealizadora
-		//		Subsystem_step();	//Ejecutamos planta linealizadora
-		//
-		//		htim1.Instance->CCR3 = rtVelocidad_linealizada;	//Salida linealizada asignada a CCR
-		//		htim1.Instance->CCR3 = 1000;
-
-		//		taskENTER_CRITICAL();
-		//		velocidad_prima1_l = velocidad_prima1;
-		//		Setpoint = ModbusDATA[0]/1000;
-		//		taskEXIT_CRITICAL();
-
-		osDelay(500);
-	}
-  /* USER CODE END StartControlTask */
+  /* USER CODE BEGIN StartTaskControl */
+  /* Infinite loop */
+  for(;;)
+  {
+	HAL_GPIO_TogglePin(Led_GPIO_Port, Led_Pin);
+    osDelay(1000);
+  }
+  /* USER CODE END StartTaskControl */
 }
 
 /**
