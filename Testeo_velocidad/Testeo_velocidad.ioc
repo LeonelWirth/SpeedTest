@@ -2,7 +2,7 @@
 FREERTOS.BinarySemaphores01=SpeedSemaphore,Dynamic,NULL
 FREERTOS.FootprintOK=true
 FREERTOS.IPParameters=Tasks01,configUSE_NEWLIB_REENTRANT,FootprintOK,configLIBRARY_LOWEST_INTERRUPT_PRIORITY,BinarySemaphores01,configTOTAL_HEAP_SIZE
-FREERTOS.Tasks01=Speed,40,256,StartSpeed,Default,NULL,Dynamic,NULL,NULL;Modbus,24,256,StartModbus,Default,NULL,Dynamic,NULL,NULL;CheckVelocidad,32,256,StartCheckVelocidad,Default,NULL,Dynamic,NULL,NULL;TaskControl,8,256,StartTaskControl,Default,NULL,Dynamic,NULL,NULL
+FREERTOS.Tasks01=Speed,40,256,StartSpeed,Default,NULL,Dynamic,NULL,NULL;Modbus,40,256,StartModbus,Default,NULL,Dynamic,NULL,NULL;CheckVelocidad,32,256,StartCheckVelocidad,Default,NULL,Dynamic,NULL,NULL;TaskControl,48,256,StartTaskControl,Default,NULL,Dynamic,NULL,NULL
 FREERTOS.configLIBRARY_LOWEST_INTERRUPT_PRIORITY=10
 FREERTOS.configTOTAL_HEAP_SIZE=6144
 FREERTOS.configUSE_NEWLIB_REENTRANT=1

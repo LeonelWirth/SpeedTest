@@ -68,7 +68,7 @@ osThreadId_t ModbusHandle;
 const osThreadAttr_t Modbus_attributes = {
 		.name = "Modbus",
 		.stack_size = 256 * 4,
-		.priority = (osPriority_t) osPriorityNormal,
+		.priority = (osPriority_t) osPriorityHigh,
 };
 /* Definitions for CheckVelocidad */
 osThreadId_t CheckVelocidadHandle;
@@ -82,7 +82,7 @@ osThreadId_t TaskControlHandle;
 const osThreadAttr_t TaskControl_attributes = {
 		.name = "TaskControl",
 		.stack_size = 256 * 4,
-		.priority = (osPriority_t) osPriorityLow,
+		.priority = (osPriority_t) osPriorityRealtime,
 };
 /* Definitions for SpeedSemaphore */
 osSemaphoreId_t SpeedSemaphoreHandle;
@@ -113,7 +113,7 @@ void StartTaskControl(void *argument);
 
 //---------------->  Modbus
 modbusHandler_t ModbusH;
-uint16_t ModbusDATA[7]={0,0,0,0,0,0,0}; // Mapa modbus!
+uint16_t ModbusDATA[32]={0,0,0,0,0,0,0,0,0,'\0'}; // Mapa modbus!
 //---------------->
 
 float velocidad = 0;
@@ -585,7 +585,7 @@ void StartSpeed(void *argument)
 				velocidad_l = ((1/(float)ranuras)/((float)deltaTicks_l/(float)fsTmr2));
 				//Filtro IIR
 				velocidad_prima2_l = velocidad_prima1_l;
-				velocidad_prima1_l = 0.92*velocidad_prima2_l + 0.08*velocidad_l;
+				velocidad_prima1_l = 0.7*velocidad_prima2_l + 0.3*velocidad_l;
 
 				taskENTER_CRITICAL();
 				deltaTicks = deltaTicks_l;
@@ -607,7 +607,7 @@ void StartSpeed(void *argument)
 				velocidad_l = ((1/(float)ranuras)/((float)deltaTicks_l/(float)fsTmr2));
 				//Filtro IIR
 				velocidad_prima2_l = velocidad_prima1_l;
-				velocidad_prima1_l = 0.92*velocidad_prima2_l + 0.08*velocidad_l;
+				velocidad_prima1_l = 0.7*velocidad_prima2_l + 0.3*velocidad_l;
 
 				taskENTER_CRITICAL();
 				overflow = 0;
@@ -624,7 +624,7 @@ void StartSpeed(void *argument)
 				taskEXIT_CRITICAL();
 			}
 		}
-		osDelay(1);
+				osDelay(1);
 	}
 	/* USER CODE END 5 */
 }
@@ -642,12 +642,15 @@ void StartModbus(void *argument)
 	uint16_t delta[2];// para mandar los deltaticks
 	uint16_t delta1[2];
 	uint16_t deltaticks[2];
+	uint16_t delta2[2];
+	uint16_t delta3[2];
 
 
 	float velocidad_l = 0;
 	float velocidad_prima1_l = 0;
 	uint32_t deltaTicks_l = 0;
-	uint16_t ModbusDATA_l[7] = {'\0'};
+
+	uint16_t ModbusDATA_l[32] = {'\0'};
 	/* Infinite loop */
 	for(;;)
 	{
@@ -677,6 +680,16 @@ void StartModbus(void *argument)
 		ModbusDATA_l[5]=delta1[0];
 		ModbusDATA_l[6]=delta1[1];
 
+		memcpy(delta2, &rtSalida_Linealizacion, sizeof(rtSalida_Linealizacion));
+		ModbusDATA_l[7]=delta2[0];
+		ModbusDATA_l[8]=delta2[1];
+
+
+		memcpy(delta3, &rtEntrada_Control, sizeof(rtEntrada_Control));
+		ModbusDATA_l[9]=delta3[0];
+		ModbusDATA_l[10]=delta3[1];
+
+
 		taskENTER_CRITICAL();
 		ModbusDATA[0] = ModbusDATA_l[0];
 		ModbusDATA[1] = ModbusDATA_l[1];
@@ -685,9 +698,15 @@ void StartModbus(void *argument)
 		ModbusDATA[4] = ModbusDATA_l[4];
 		ModbusDATA[5] = ModbusDATA_l[5];
 		ModbusDATA[6] = ModbusDATA_l[6];
+		ModbusDATA[7] = ModbusDATA_l[7];
+		ModbusDATA[8] = ModbusDATA_l[8];
+		ModbusDATA[9] = ModbusDATA_l[9];
+		ModbusDATA[10] = ModbusDATA_l[10];
+
+
 		taskEXIT_CRITICAL();
 
-		osDelay(50);
+		osDelay(10);
 	}
 	/* USER CODE END StartModbus */
 }
@@ -713,7 +732,8 @@ void StartCheckVelocidad(void *argument)
 		overflow_l = overflow;
 		taskEXIT_CRITICAL();
 
-		if(overflow_l >= 2){
+		if(overflow_l >= 3){
+			overflow_l = 0;
 			taskENTER_CRITICAL();
 			overflow = 0;
 			velocidad_prima2 = 0;
@@ -721,7 +741,7 @@ void StartCheckVelocidad(void *argument)
 			velocidad = 0;
 			taskEXIT_CRITICAL();
 		}
-		osDelay(20);
+		osDelay(5);
 	}
 	/* USER CODE END StartCheckVelocidad */
 }
@@ -736,25 +756,62 @@ void StartCheckVelocidad(void *argument)
 void StartTaskControl(void *argument)
 {
 	/* USER CODE BEGIN StartTaskControl */
-	float velocidad_prima1_l = 0;
+	float velocidad_l=0;
 	float Setpoint = 0;
+	uint16_t delta4[2];
+	float error=0;
+
 	/* Infinite loop */
 	for(;;)
 	{
-		HAL_GPIO_TogglePin(Led_GPIO_Port, Led_Pin);
+		//		HAL_GPIO_TogglePin(Led_GPIO_Port, Led_Pin);
 		taskENTER_CRITICAL();
-		velocidad_prima1_l = velocidad_prima1;
+		velocidad_l = velocidad;
 		Setpoint = ModbusDATA[0]/1000.0;
+
+		memcpy(delta4, &Setpoint, sizeof(Setpoint));
+		ModbusDATA[11]=delta4[0];
+		ModbusDATA[12]=delta4[1];
+
 		taskEXIT_CRITICAL();
 
-		rtEntrada_Control = Setpoint - velocidad_prima1_l; //Error para PID
+		rtEntrada_Control = Setpoint - velocidad_l; //Error para PID
 		control_step(); //Ejecutamos control
 
-		rtdelta_w = rtSalida_Control;	//Salida PID asignada a entrada de planta linealizadora
+		rtEntrada_Linealizacion = rtSalida_Control;	//Salida PID asignada a entrada de planta linealizadora
 		Linealizacion_step();	//Ejecutamos planta linealizadora
+		if(Setpoint==0){
+			htim1.Instance->CCR2 = (uint32_t)0;
+		} else{
 
-		htim1.Instance->CCR2 = rtVelocidad_linealizada;	//Salida linealizada asignada a CCR
+		htim1.Instance->CCR2 = (uint32_t)rtSalida_Linealizacion;	//Salida linealizada asignada a CCR
+		}
 
+
+		//		Codigo para validar control
+		//		taskENTER_CRITICAL();
+		//		Setpoint = ModbusDATA[0]/1000.0;
+		//		taskEXIT_CRITICAL();
+		//
+		//		rtEntrada_Control = Setpoint - velocidad_l; //Error para PID
+		//		control_step(); //Ejecutamos control
+		//
+		//		htim1.Instance->CCR2 = rtSalida_Control;	//Salida PID asignada a entrada de planta linealizadora
+
+		//		Codigo para validar linealización
+		//		taskENTER_CRITICAL();
+		//		Setpoint = ModbusDATA[0]/1000.0; // Setpoint de velocidad (vueltas/seg*1000)
+		//		taskEXIT_CRITICAL();
+		//
+		//		rtEntrada_Linealizacion = Setpoint;
+		//		Linealizacion_step();
+		//		htim1.Instance->CCR2 = rtSalida_Linealizacion;
+
+		//		taskENTER_CRITICAL();
+		//		Setpoint = ModbusDATA[0]; // Setpoint de velocidad (vueltas/seg*1000)
+		//		taskEXIT_CRITICAL();
+		//
+		//		htim1.Instance->CCR2 = Setpoint;
 
 		osDelay(5);
 
