@@ -1,5 +1,5 @@
 Linealizacion.c:35:6:Linealizacion_step	16	static
-Linealizacion.c:106:6:Linealizacion_initialize	4	static
+Linealizacion.c:109:6:Linealizacion_initialize	4	static
 control.c:29:6:control_step	24	static
 control.c:65:6:control_initialize	4	static
 main.c:131:6:HAL_GPIO_EXTI_Callback	16	static
