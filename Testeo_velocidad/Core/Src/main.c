@@ -34,6 +34,8 @@
 
 #include "control.c"
 #include "control.h"
+
+#include "INA219.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -51,6 +53,8 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+I2C_HandleTypeDef hi2c1;
+
 TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim2;
 
@@ -91,6 +95,8 @@ const osSemaphoreAttr_t SpeedSemaphore_attributes = {
 };
 /* USER CODE BEGIN PV */
 
+INA219_t ina219;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -99,6 +105,7 @@ static void MX_GPIO_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_USART3_UART_Init(void);
+static void MX_I2C1_Init(void);
 void StartSpeed(void *argument);
 void StartModbus(void *argument);
 void StartCheckVelocidad(void *argument);
@@ -171,6 +178,7 @@ int main(void)
 	MX_TIM2_Init();
 	MX_TIM1_Init();
 	MX_USART3_UART_Init();
+	MX_I2C1_Init();
 	/* USER CODE BEGIN 2 */
 	HAL_TIM_Base_Start_IT(&htim2);
 	Linealizacion_initialize();
@@ -296,6 +304,40 @@ void SystemClock_Config(void)
 	{
 		Error_Handler();
 	}
+}
+
+/**
+ * @brief I2C1 Initialization Function
+ * @param None
+ * @retval None
+ */
+static void MX_I2C1_Init(void)
+{
+
+	/* USER CODE BEGIN I2C1_Init 0 */
+
+	/* USER CODE END I2C1_Init 0 */
+
+	/* USER CODE BEGIN I2C1_Init 1 */
+
+	/* USER CODE END I2C1_Init 1 */
+	hi2c1.Instance = I2C1;
+	hi2c1.Init.ClockSpeed = 100000;
+	hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
+	hi2c1.Init.OwnAddress1 = 0;
+	hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+	hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+	hi2c1.Init.OwnAddress2 = 0;
+	hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+	hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+	if (HAL_I2C_Init(&hi2c1) != HAL_OK)
+	{
+		Error_Handler();
+	}
+	/* USER CODE BEGIN I2C1_Init 2 */
+
+	/* USER CODE END I2C1_Init 2 */
+
 }
 
 /**
@@ -624,7 +666,7 @@ void StartSpeed(void *argument)
 				taskEXIT_CRITICAL();
 			}
 		}
-				osDelay(1);
+		osDelay(1);
 	}
 	/* USER CODE END 5 */
 }
@@ -724,6 +766,16 @@ void StartCheckVelocidad(void *argument)
 
 	uint16_t overflow_l =0;
 
+	///////////////////////////
+
+	uint16_t rawCurrent = 0;
+	float current = 0;
+	while(!INA219_Init(&ina219, &hi2c1, INA219_ADDRESS));
+	uint16_t delta[2];
+
+	////////////////////////////////////
+
+
 
 	/* Infinite loop */
 	for(;;)
@@ -740,6 +792,22 @@ void StartCheckVelocidad(void *argument)
 			velocidad_prima1 = 0;
 			velocidad = 0;
 			taskEXIT_CRITICAL();
+
+			/////////////////////////////////////////////
+			rawCurrent = INA219_ReadCurrent_raw(&ina219); // mA?
+			if(rawCurrent > 32767){
+				//hago complemento a 2
+				uint16_t complementCurrent = (0xFFFF - rawCurrent)+1;
+				current = - complementCurrent / 10.0;
+
+			} else {
+				current = rawCurrent/10.0; // mA
+			}
+
+//			memcpy(delta, &current, sizeof(current));
+//			ModbusDATA[13]=delta[0];
+//			ModbusDATA[14]=delta[1];
+			//////////////////////////////////////////////
 		}
 		osDelay(5);
 	}
@@ -780,12 +848,9 @@ void StartTaskControl(void *argument)
 
 		rtEntrada_Linealizacion = rtSalida_Control;	//Salida PID asignada a entrada de planta linealizadora
 		Linealizacion_step();	//Ejecutamos planta linealizadora
-		if(Setpoint==0){
-			htim1.Instance->CCR2 = (uint32_t)0;
-		} else{
 
 		htim1.Instance->CCR2 = (uint32_t)rtSalida_Linealizacion;	//Salida linealizada asignada a CCR
-		}
+
 
 
 		//		Codigo para validar control
